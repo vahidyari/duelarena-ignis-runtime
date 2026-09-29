@@ -1,0 +1,5 @@
+DuelArena Ignis Runtime builder files are provided under AGPL-3.0-or-later.
+
+The generated runtime bundles contain third-party Project Ignis / ygopro-core
+materials with their own upstream copyright notices and AGPL licensing.
+See the upstream repositories and THIRD_PARTY_NOTICES.md for provenance.
