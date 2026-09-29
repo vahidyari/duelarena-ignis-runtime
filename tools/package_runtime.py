@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from contextlib import closing
 import hashlib
 import json
 from pathlib import Path
@@ -35,7 +36,9 @@ def selected_database_files(root: Path) -> list[Path]:
 
 
 def validate_database(path: Path) -> None:
-    with sqlite3.connect(f"file:{path.as_posix()}?mode=ro", uri=True) as connection:
+    # Explicitly close the native SQLite handle.  A connection context manager
+    # only controls the transaction and can leave the file locked on Windows.
+    with closing(sqlite3.connect(f"file:{path.as_posix()}?mode=ro", uri=True)) as connection:
         integrity = connection.execute("PRAGMA integrity_check").fetchone()
         if not integrity or str(integrity[0]).lower() != "ok":
             raise RuntimeError(f"SQLite integrity check failed: {path.name}")

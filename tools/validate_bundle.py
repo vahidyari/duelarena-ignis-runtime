@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import ctypes
+from contextlib import closing
 import gc
 import json
 import os
@@ -61,7 +62,10 @@ def validate_bundle(archive: Path, expected_platform: str | None = None) -> dict
             db = root / relative
             if not db.is_file():
                 raise RuntimeError(f"Missing DB: {relative}")
-            with sqlite3.connect(f"file:{db.as_posix()}?mode=ro", uri=True) as connection:
+            # sqlite3.Connection.__exit__ commits/rolls back but does not close
+            # the native database handle.  Windows therefore keeps extracted
+            # .cdb files locked when TemporaryDirectory tries to remove them.
+            with closing(sqlite3.connect(f"file:{db.as_posix()}?mode=ro", uri=True)) as connection:
                 tables = {str(row[0]) for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
                 if "datas" not in tables:
                     raise RuntimeError(f"Missing datas table: {relative}")

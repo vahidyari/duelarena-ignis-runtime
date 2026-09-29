@@ -79,3 +79,13 @@ def test_validator_contains_windows_dll_release_guard() -> None:
 def test_collect_steps_pin_release_build_config() -> None:
     source = Path(".github/workflows/build-runtime.yml").read_text(encoding="utf-8")
     assert source.count("BUILD_CONFIG: release") >= 4
+
+
+
+def test_sqlite_handles_are_explicitly_closed_for_windows_cleanup() -> None:
+    validator = Path("tools/validate_bundle.py").read_text(encoding="utf-8")
+    packager = Path("tools/package_runtime.py").read_text(encoding="utf-8")
+    assert "from contextlib import closing" in validator
+    assert "with closing(sqlite3.connect" in validator
+    assert "from contextlib import closing" in packager
+    assert "with closing(sqlite3.connect" in packager
