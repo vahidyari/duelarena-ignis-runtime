@@ -67,3 +67,15 @@ def test_manifest_matches_control_center_schema() -> None:
     assert manifest["platforms"] == ["windows-x64"]
     assert manifest["bundle"]["url"].endswith("/ignis-test/bundle.zip")
     assert manifest["bundle"]["sha256"] == "a" * 64
+
+
+
+def test_validator_contains_windows_dll_release_guard() -> None:
+    source = Path("tools/validate_bundle.py").read_text(encoding="utf-8")
+    assert "FreeLibrary" in source
+    assert "_release_dynamic_library(library)" in source
+
+
+def test_collect_steps_pin_release_build_config() -> None:
+    source = Path(".github/workflows/build-runtime.yml").read_text(encoding="utf-8")
+    assert source.count("BUILD_CONFIG: release") >= 4

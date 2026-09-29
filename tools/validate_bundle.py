@@ -2,11 +2,35 @@ from __future__ import annotations
 
 import argparse
 import ctypes
+import gc
 import json
+import os
 from pathlib import Path
 import sqlite3
 import tempfile
 import zipfile
+
+
+def _release_dynamic_library(library: ctypes.CDLL) -> None:
+    """Release a ctypes-loaded library before deleting its extracted directory.
+
+    Windows keeps a loaded DLL locked, so TemporaryDirectory cleanup fails with
+    WinError 5 unless FreeLibrary is called explicitly.  POSIX platforms can
+    unlink a loaded .so and do not need this special handling.
+    """
+
+    handle = getattr(library, "_handle", None)
+    if not handle or os.name != "nt":
+        return
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    free_library = kernel32.FreeLibrary
+    free_library.argtypes = [ctypes.c_void_p]
+    free_library.restype = ctypes.c_int
+
+    if not free_library(ctypes.c_void_p(handle)):
+        error = ctypes.get_last_error()
+        raise OSError(error, "FreeLibrary failed for ocgcore")
 
 
 def validate_bundle(archive: Path, expected_platform: str | None = None) -> dict:
@@ -46,15 +70,32 @@ def validate_bundle(archive: Path, expected_platform: str | None = None) -> dict
         if not core.is_file():
             raise RuntimeError(f"Missing core library: {metadata['core_library']}")
         library = ctypes.CDLL(str(core))
-        getter = library.OCG_GetVersion
-        getter.argtypes = [ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int)]
-        getter.restype = None
-        major = ctypes.c_int()
-        minor = ctypes.c_int()
-        getter(ctypes.byref(major), ctypes.byref(minor))
-        if major.value <= 0:
-            raise RuntimeError("ocgcore returned invalid API version")
-        return {"ok": True, "api_major": major.value, "api_minor": minor.value, "metadata": metadata}
+        try:
+            getter = library.OCG_GetVersion
+            getter.argtypes = [ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int)]
+            getter.restype = None
+            major = ctypes.c_int()
+            minor = ctypes.c_int()
+            getter(ctypes.byref(major), ctypes.byref(minor))
+            if major.value <= 0:
+                raise RuntimeError("ocgcore returned invalid API version")
+            result = {
+                "ok": True,
+                "api_major": major.value,
+                "api_minor": minor.value,
+                "metadata": metadata,
+            }
+        finally:
+            # Drop the function proxy before releasing the DLL itself.
+            try:
+                del getter
+            except UnboundLocalError:
+                pass
+            _release_dynamic_library(library)
+            del library
+            gc.collect()
+
+        return result
 
 
 def main() -> int:
