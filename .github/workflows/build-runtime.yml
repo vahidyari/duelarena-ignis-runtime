@@ -90,6 +90,7 @@ jobs:
         shell: bash
         working-directory: core
         env:
+          BUILD_CONFIG: release
           DEPLOY_DIR: ocgcore
           TRAVIS_OS_NAME: windows
           TARGET_OS: windows
@@ -155,6 +156,7 @@ jobs:
         shell: bash
         working-directory: core
         env:
+          BUILD_CONFIG: release
           DEPLOY_DIR: ocgcore
           TRAVIS_OS_NAME: linux
           STRIP: '0'
