@@ -1,0 +1,235 @@
+name: Build DuelArena Ignis Runtime
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      force_build:
+        description: 'Build even if upstream commits did not change'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ignis-runtime-publisher
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.upstream.outputs.changed }}
+      version: ${{ steps.upstream.outputs.version }}
+      core: ${{ steps.upstream.outputs.core }}
+      cardscripts: ${{ steps.upstream.outputs.cardscripts }}
+      babelcdb: ${{ steps.upstream.outputs.babelcdb }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - id: upstream
+        name: Check upstream commits
+        shell: bash
+        run: |
+          FORCE='false'
+          if [[ '${{ github.event_name }}' == 'workflow_dispatch' && '${{ inputs.force_build }}' == 'true' ]]; then
+            FORCE='true'
+          fi
+          if [[ "$FORCE" == 'true' ]]; then
+            python tools/check_upstream.py --github-output "$GITHUB_OUTPUT" --force
+          else
+            python tools/check_upstream.py --github-output "$GITHUB_OUTPUT"
+          fi
+
+  build-windows-x64:
+    needs: prepare
+    if: needs.prepare.outputs.changed == 'true'
+    runs-on: windows-2022
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
+      CORE_SHA: ${{ needs.prepare.outputs.core }}
+      SCRIPTS_SHA: ${{ needs.prepare.outputs.cardscripts }}
+      DB_SHA: ${{ needs.prepare.outputs.babelcdb }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: microsoft/setup-msbuild@v3
+      - name: Clone pinned upstream sources
+        shell: bash
+        run: |
+          git clone --recursive https://github.com/edo9300/ygopro-core.git core
+          git -C core checkout "$CORE_SHA"
+          git -C core submodule update --init --recursive
+          git clone https://github.com/ProjectIgnis/CardScripts.git cardscripts
+          git -C cardscripts checkout "$SCRIPTS_SHA"
+          git clone https://github.com/ProjectIgnis/BabelCDB.git babelcdb
+          git -C babelcdb checkout "$DB_SHA"
+      - name: Install premake
+        shell: cmd
+        working-directory: core
+        run: scripts\install-premake5
+      - name: Build shared ocgcore x64
+        shell: bash
+        working-directory: core
+        env:
+          BUILD_CONFIG: release
+          VISUAL_STUDIO_ARCH: x64
+          VISUAL_STUDIO_VERSION: vs2022
+          PREMAKE_FLAGS: ''
+        run: ./scripts/build-premake5-msvc.sh
+      - name: Collect core
+        shell: bash
+        working-directory: core
+        env:
+          DEPLOY_DIR: ocgcore
+          TRAVIS_OS_NAME: windows
+          TARGET_OS: windows
+          STRIP: '0'
+        run: ./scripts/predeploy.sh
+      - name: Package Standard runtime
+        shell: bash
+        run: |
+          python tools/package_runtime.py \
+            --platform windows-x64 \
+            --core-library core/ocgcore/ocgcore.dll \
+            --cardscripts cardscripts \
+            --babelcdb babelcdb \
+            --version "$VERSION" \
+            --core-sha "$CORE_SHA" \
+            --cardscripts-sha "$SCRIPTS_SHA" \
+            --babelcdb-sha "$DB_SHA"
+          BUNDLE=$(python -c "import json; print(json.load(open('dist/descriptor-windows-x64.json'))['filename'])")
+          python tools/validate_bundle.py "dist/$BUNDLE" --expected-platform windows-x64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: runtime-windows-x64
+          path: |
+            dist/duelarena-ignis-windows-x64-*.zip
+            dist/descriptor-windows-x64.json
+          if-no-files-found: error
+          retention-days: 7
+
+  build-linux-x64:
+    needs: prepare
+    if: needs.prepare.outputs.changed == 'true'
+    runs-on: ubuntu-24.04
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
+      CORE_SHA: ${{ needs.prepare.outputs.core }}
+      SCRIPTS_SHA: ${{ needs.prepare.outputs.cardscripts }}
+      DB_SHA: ${{ needs.prepare.outputs.babelcdb }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Clone pinned upstream sources
+        shell: bash
+        run: |
+          git clone --recursive https://github.com/edo9300/ygopro-core.git core
+          git -C core checkout "$CORE_SHA"
+          git -C core submodule update --init --recursive
+          git clone https://github.com/ProjectIgnis/CardScripts.git cardscripts
+          git -C cardscripts checkout "$SCRIPTS_SHA"
+          git clone https://github.com/ProjectIgnis/BabelCDB.git babelcdb
+          git -C babelcdb checkout "$DB_SHA"
+      - name: Build shared ocgcore
+        shell: bash
+        working-directory: core
+        env:
+          BUILD_CONFIG: release
+          TRAVIS_OS_NAME: linux
+        run: |
+          ./scripts/install-premake5.sh
+          ./scripts/build-premake5.sh
+      - name: Collect core
+        shell: bash
+        working-directory: core
+        env:
+          DEPLOY_DIR: ocgcore
+          TRAVIS_OS_NAME: linux
+          STRIP: '0'
+        run: ./scripts/predeploy.sh
+      - name: Package Standard runtime
+        shell: bash
+        run: |
+          python tools/package_runtime.py \
+            --platform linux-x64 \
+            --core-library core/ocgcore/libocgcore.so \
+            --cardscripts cardscripts \
+            --babelcdb babelcdb \
+            --version "$VERSION" \
+            --core-sha "$CORE_SHA" \
+            --cardscripts-sha "$SCRIPTS_SHA" \
+            --babelcdb-sha "$DB_SHA"
+          BUNDLE=$(python -c "import json; print(json.load(open('dist/descriptor-linux-x64.json'))['filename'])")
+          python tools/validate_bundle.py "dist/$BUNDLE" --expected-platform linux-x64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: runtime-linux-x64
+          path: |
+            dist/duelarena-ignis-linux-x64-*.zip
+            dist/descriptor-linux-x64.json
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    needs: [prepare, build-windows-x64, build-linux-x64]
+    if: needs.prepare.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERSION: ${{ needs.prepare.outputs.version }}
+      CORE_SHA: ${{ needs.prepare.outputs.core }}
+      SCRIPTS_SHA: ${{ needs.prepare.outputs.cardscripts }}
+      DB_SHA: ${{ needs.prepare.outputs.babelcdb }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: runtime-*
+          path: dist
+          merge-multiple: true
+      - name: Publish immutable release assets
+        shell: bash
+        run: |
+          TAG="ignis-$VERSION"
+          printf 'ygopro-core: %s\nCardScripts: %s\nBabelCDB: %s\n' "$CORE_SHA" "$SCRIPTS_SHA" "$DB_SHA" > release-notes.txt
+          gh release create "$TAG" dist/*.zip \
+            --title "DuelArena Ignis Runtime $VERSION" \
+            --notes-file release-notes.txt
+          python tools/release_feed.py \
+            --dist dist \
+            --feed feed \
+            --repo "$GITHUB_REPOSITORY" \
+            --tag "$TAG" \
+            --version "$VERSION" \
+            --core-sha "$CORE_SHA" \
+            --cardscripts-sha "$SCRIPTS_SHA" \
+            --babelcdb-sha "$DB_SHA"
+      - name: Update tiny feed manifests
+        shell: bash
+        run: |
+          git config user.name 'duelarena-runtime-bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add feed/
+          if git diff --cached --quiet; then
+            echo 'Feed already current.'
+          else
+            git commit -m "runtime: $VERSION [skip ci]"
+            git push
+          fi
