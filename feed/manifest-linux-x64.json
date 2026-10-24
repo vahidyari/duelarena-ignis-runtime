@@ -1,17 +1,17 @@
 {
   "schema_version": 1,
-  "version": "2026.10.24.1537-baa3881-4105d06-1933914",
+  "version": "2026.10.24.2027-baa3881-196eb04-1933914",
   "platforms": [
     "linux-x64"
   ],
   "components": {
     "core_commit": "baa3881d0bae48e9994f915f5c931be53c1ba8ef",
-    "cardscripts_commit": "4105d0660807179f59e90111f3a8d804768899d6",
+    "cardscripts_commit": "196eb043514e2cbc23ff891e3cfe31b89765ce49",
     "babelcdb_commit": "19339149fa5ee509327023f15a81d8ba4164c5a1"
   },
   "bundle": {
-    "url": "https://github.com/vahidyari/duelarena-ignis-runtime/releases/download/ignis-2026.10.24.1537-baa3881-4105d06-1933914/duelarena-ignis-linux-x64-2026.10.24.1537-baa3881-4105d06-1933914.zip",
-    "sha256": "b4e71f57f7d6c98ae9b863e2edd7e8dadfc49b7ba1cd7915fbe5028a179b6421",
-    "size": 34449133
+    "url": "https://github.com/vahidyari/duelarena-ignis-runtime/releases/download/ignis-2026.10.24.2027-baa3881-196eb04-1933914/duelarena-ignis-linux-x64-2026.10.24.2027-baa3881-196eb04-1933914.zip",
+    "sha256": "f4709eeaf747a694605fb24e109721da0fe3fe050f0ac5c257256f5f28ba7682",
+    "size": 34449132
   }
 }
