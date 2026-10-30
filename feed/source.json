@@ -1,8 +1,8 @@
 {
-  "version": "2026.10.29.2234-6864373-2ddefd0-2e6f985",
-  "release_tag": "ignis-2026.10.29.2234-6864373-2ddefd0-2e6f985",
-  "published_at": "2026-10-29T22:37:40+00:00",
+  "version": "2026.10.30.2203-6864373-3d7552d-5c47935",
+  "release_tag": "ignis-2026.10.30.2203-6864373-3d7552d-5c47935",
+  "published_at": "2026-10-30T22:05:51+00:00",
   "core": "6864373c24d7313c8e451df17877c12c4f713c46",
-  "cardscripts": "2ddefd0115a122f8cd3f494b6affbcbc27b4f974",
-  "babelcdb": "2e6f985a5537d9b16ec7396787b5279d94af419d"
+  "cardscripts": "3d7552d31a47b583dccf9b372cf51923cdc84313",
+  "babelcdb": "5c47935a9eedabcb47560597581b7959dd717f28"
 }
