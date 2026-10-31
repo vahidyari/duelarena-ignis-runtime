@@ -1,17 +1,17 @@
 {
   "schema_version": 1,
-  "version": "2026.10.31.1154-6864373-333b70e-1a0ff4f",
+  "version": "2026.10.31.1700-6864373-71105b2-bf82826",
   "platforms": [
     "linux-x64"
   ],
   "components": {
     "core_commit": "6864373c24d7313c8e451df17877c12c4f713c46",
-    "cardscripts_commit": "333b70e3f54726eeae6b117d74360496652b4596",
-    "babelcdb_commit": "1a0ff4fecd720a378c6732149720d6229d926892"
+    "cardscripts_commit": "71105b218001fa7015729dcc7f5002cbe1d37b4e",
+    "babelcdb_commit": "bf8282668e1df34c33ca72fff0b6c989dc20a6a3"
   },
   "bundle": {
-    "url": "https://github.com/vahidyari/duelarena-ignis-runtime/releases/download/ignis-2026.10.31.1154-6864373-333b70e-1a0ff4f/duelarena-ignis-linux-x64-2026.10.31.1154-6864373-333b70e-1a0ff4f.zip",
-    "sha256": "42f4cb6cd9dfd2ed78252511827d841e250ec69360b42135ea69e45c29a349f7",
-    "size": 34452077
+    "url": "https://github.com/vahidyari/duelarena-ignis-runtime/releases/download/ignis-2026.10.31.1700-6864373-71105b2-bf82826/duelarena-ignis-linux-x64-2026.10.31.1700-6864373-71105b2-bf82826.zip",
+    "sha256": "da7dd8eaec51f7761b76e4c2fc83adfe40ec2dac82657b33feb81c2fef77f646",
+    "size": 34452078
   }
 }
